@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "outDir": "./js",
+    "rootDir": "./",
+    "esModuleInterop": true,
+    "lib": ["DOM", "ES2017"],
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.ts", "js/**/*.ts"],
+  "exclude": ["node_modules", "vendor", "tests"]
+}

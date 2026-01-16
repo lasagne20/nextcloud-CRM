@@ -1,0 +1,71 @@
+{
+  "php.validate.executablePath": "",
+  "php.debug.executablePath": "",
+  
+  // Configuration PHPUnit
+  "phpunit.phpunit": "./vendor/bin/phpunit",
+  "phpunit.args": [
+    "-c", "tests/phpunit.xml",
+    "--colors=always"
+  ],
+  "phpunit.driverPriority": [
+    "Path",
+    "Composer",
+    "Phar",
+    "Vendor",
+    "Remote"
+  ],
+  
+  // Configuration Jest
+  "jest.jestCommandLine": "npm run test --",
+  "jest.runMode": "on-demand",
+  "jest.rootPath": ".",
+  
+  // Configuration Playwright
+  "playwright.searchForWorkspaceTests": true,
+  "playwright.showTrace": true,
+  "playwright.reuseBrowser": true,
+  
+  // Configuration générale des tests
+  "testing.defaultGutterClickAction": "run",
+  "testing.followRunningTest": true,
+  "testing.openTesting": "neverOpen",
+  "testing.showAllMessages": false,
+  
+  // Configuration TypeScript
+  "typescript.preferences.includePackageJsonAutoImports": "auto",
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  
+  // Configuration des fichiers
+  "files.associations": {
+    "*.php": "php",
+    "*.test.ts": "typescript",
+    "*.test.js": "javascript",
+    "*.spec.ts": "typescript",
+    "*.spec.js": "javascript"
+  },
+  
+  // Exclusions pour de meilleures performances
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/vendor": true,
+    "**/coverage": true,
+    "**/tests/coverage": true,
+    "**/tests/coverage-php": true,
+    "**/.jest-cache": true,
+    "**/test-results": true,
+    "**/playwright-report": true
+  },
+  
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/vendor": false,
+    "**/coverage": true,
+    "**/.jest-cache": true
+  },
+  
+  // Configuration Testing API VS Code
+  "testing.automaticallyOpenPeekView": "failureInVisibleDocument",
+  "testing.saveBeforeTest": true,
+  "testing.automaticallyOpenTestResults": "neverOpen"
+}

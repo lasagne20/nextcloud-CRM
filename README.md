@@ -1,374 +1,294 @@
-# CRM Nextcloud avec Markdown-CRM
+# CRM for Nextcloud
 
-Application CRM pour Nextcloud qui intègre la bibliothèque Markdown-CRM pour gérer des données structurées dans des fichiers Markdown avec frontmatter YAML.
+Custom CRM application for Nextcloud with advanced workflow integration.
 
-## ✨ Fonctionnalités
+## 🎯 Main Features
 
-- **📝 CRM basé sur Markdown** : Stockez contacts, institutions, lieux et entités personnalisées sous forme de fichiers Markdown
-- **🎨 Affichage enrichi des métadonnées** : Interface interactive avec onglets, listes déroulantes, boutons multi-sélection et notations par étoiles
-- **💾 Sauvegarde automatique** : Persistance automatique lors des modifications (debounce de 300ms)
-- **⚡ Optimisé pour la performance** : Mise en cache des métadonnées (TTL de 5 secondes) pour minimiser les lectures de fichiers
-- **🎯 Classes personnalisables** : Définissez vos propres types d'entités via des fichiers de configuration YAML
-- **📊 Vues dynamiques** : Affichage en ligne, onglets, pliage et tableau pour les propriétés
-- **🔧 Paramètres administrateur** : Configuration des chemins config et vault via le panel admin Nextcloud
-- **🌐 Support multi-utilisateurs** : Chaque utilisateur dispose de son propre vault avec données isolées
+### 1. Automatic Contacts & Calendar Synchronization
 
-## 🚀 Démarrage rapide
+Automatic synchronization of contacts and events from Markdown files to Nextcloud.
 
-### Prérequis
+**Features:**
+- Automatic contact creation (Class: Person) in address book
+- Automatic event creation (Class: Action) in calendar
+- **Array Properties**: Create multiple events from a single Markdown file
+- Centralized or decentralized configuration
+- Choice of target user and address book/calendar
 
-- Nextcloud 31+ (testé avec PHP 8.3.24, Apache 2.4.62)
-- Node.js 18+ et npm
-- Docker (optionnel, pour l'environnement de développement)
+**Documentation:**
+- [📖 Synchronization Configuration](docs/SYNC_SETTINGS.md)
+- [📋 Array Properties](docs/ARRAY_PROPERTIES.md)
+- [🚀 Quick Start](docs/QUICKSTART_SYNC.md)
 
-### Installation
+### 2. Workflow Filter by Markdown Metadata
 
-1. **Cloner le dépôt dans votre répertoire d'applications Nextcloud :**
+Create workflow rules based on YAML frontmatter metadata in markdown files.
+
+**Metadata Example:**
+```yaml
+---
+Class: Location
+City: Paris
+Type: Restaurant
+---
+```
+
+**Use Cases:**
+- Block file access based on type (Location, Person, Institution...)
+- Apply automatic tags
+- Trigger custom notifications
+- Restrict sharing based on metadata
+
+### 3. Enhanced Metadata Display
+
+- Interactive interface with tabs and dynamic views
+- Manage contacts, institutions, locations via Markdown files
+- YAML configuration to define your own entity types
+
+## 🧪 Tests
+
+The project includes a complete test suite:
+- **Unit tests** (Jest + PHP)
+- **Integration tests**
+- **E2E tests** (Playwright)
+
+**Test Documentation:**
+- [VS Code Tests Guide](docs/VSCODE_TESTS_GUIDE.md)
+- [Starting Tests](docs/DEMARRAGE_TESTS_VSCODE.md)
+- [Troubleshooting](docs/DEPANNAGE_TESTS_VSCODE.md)
+- [Tests Summary](docs/TESTS_SUMMARY.md)
+
+**Run Tests:**
+
+```bash
+# All tests
+npm run test:all
+
+# Frontend tests only
+npm test
+
+# PHP tests only
+npm run test:php
+
+# Tests with coverage
+npm run test:coverage
+```
+
+## 📚 Complete Documentation
+
+- **[docs/](docs/)** - All project documentation
+- **[docs/README.md](docs/README.md)** - Documentation index
+- **[docs/INDEX_DOCUMENTATION.md](docs/INDEX_DOCUMENTATION.md)** - User profile guide
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history
+
+## 📦 Installation
+
+### Prerequisites
+- Nextcloud 31.0+
+- PHP 8.1+
+- Node.js 18+ (for build)
+
+### Steps
+
+1. **Clone into apps folder**
    ```bash
-   cd nextcloud/custom_apps
-   git clone <url-de-votre-repo> crm
+   cd /var/www/html/custom_apps
+   git clone https://github.com/your-repo/crm.git
+   ```
+
+2. **Install dependencies**
+   ```bash
    cd crm
-   ```
-
-2. **Installer les dépendances :**
-   ```bash
    npm install
+   composer install
    ```
 
-3. **Compiler l'application :**
+3. **Build assets**
    ```bash
    npm run build
    ```
 
-4. **Activer l'application dans Nextcloud :**
-   - Aller dans le panel d'administration Nextcloud → Applications
-   - Trouver "CRM" dans la liste
-   - Cliquer sur "Activer"
+4. **Enable the application**
+   ```bash
+   php occ app:enable crm
+   ```
 
-5. **Configurer les chemins (optionnel) :**
-   - Aller dans Paramètres → Administration → Paramètres additionnels
-   - Trouver la section "Paramètres CRM"
-   - Définir vos chemins config et vault
-   - Valeurs par défaut : `config_path=/apps/crm/config`, `vault_path=vault`
+5. **Patch Manager.php** (required once)
+   
+   Edit `/var/www/html/apps/workflowengine/lib/Manager.php`
+   
+   In the `getBuildInChecks()` method, add after `UserGroupMembership::class`:
+   ```php
+   // CRM: Markdown Metadata Check
+   $this->container->query(\OCA\CRM\Flow\MarkdownMetadataCheck::class),
+   ```
 
-### Configuration de développement avec Docker
+## 🚀 Usage
 
-```bash
-# Démarrer les conteneurs
-docker-compose up -d
+### Create a Workflow Rule
 
-# Surveiller les modifications de fichiers
-npm run watch
+1. Go to **Settings** → **Administration** → **Workflow**
+2. Select the trigger event (e.g., "File is accessed")
+3. Add a **"Markdown Metadata"** filter
+4. Choose the operator:
+   - `matches` → Exact match: `Class:Location`
+   - `does not match` → Inverse
+   - `matches expression` → Regex: `/Class:(Location|City)/`
+5. Configure the action (Block, Tag, Notify...)
 
-# Accéder à Nextcloud sur http://localhost:8080
-```
+### Value Format
 
-## 📁 Structure du projet
+- **Simple:** `Class:Location`
+- **Regex:** `/Class:(Location|City)/` (with `/` delimiters)
+- **Multiple keys:** `Class:Location` then add another filter
 
-```
-crm/
-├── appinfo/
-│   ├── info.xml                  # App metadata
-│   └── routes.php                # API routes
-├── config/                       # YAML class definitions
-│   ├── Personne.yaml             # Person class
-│   ├── Institution.yaml          # Institution class
-│   ├── Lieu.yaml                 # Location class
-│   └── ...                       # Custom classes
-├── css/
-│   ├── crm-main.css             # Main layout styles
-│   └── markdown-crm-display.css # Metadata display styles
-├── js/
-│   ├── main.ts                  # Main application entry point
-│   ├── main.js                  # Compiled bundle
-│   └── admin-settings.js        # Admin settings bundle
-├── lib/
-│   ├── AppInfo/
-│   │   └── Application.php      # App initialization
-│   ├── Controller/
-│   │   ├── PageController.php   # Main page controller
-│   │   ├── FileController.php   # File API endpoints
-│   │   ├── ConfigController.php # Config API
-│   │   └── SettingsController.php # Settings API
-│   └── Settings/
-│       └── AdminSettings.php    # Admin settings page
-├── src/
-│   ├── App.ts                   # NextcloudApp adapter (IApp)
-│   ├── SafeMarkdownCRM.ts       # CSP-safe wrapper
-│   └── settings/
-│       └── AdminSettings.ts     # Settings UI component
-├── templates/
-│   ├── index.php                # Main app template
-│   └── admin-settings.php       # Admin settings template
-├── vault/                       # Example Markdown files
-│   ├── Contacts/
-│   ├── Institutions/
-│   └── Lieux/
-└── package.json
-```
+### Create CRM Markdown Files
 
-## 🎯 Utilisation
-
-### Créer des classes d'entités (Configuration YAML)
-
-Définissez la structure de vos entités dans `config/VotreClasse.yaml` :
-
-```yaml
-properties:
-  - name: email
-    type: text
-    icon: mail
-    
-  - name: phone
-    type: text
-    icon: phone
-    
-  - name: relation
-    type: multi-select
-    options: [client, prospect, partner]
-    
-  - name: rating
-    type: select
-    options: [1, 2, 3, 4, 5]
-    display: star-rating
-
-display:
-  - type: line
-    properties: [email, phone]
-    
-  - type: tabs
-    tabs:
-      - name: Info
-        type: fold
-        properties: [relation, rating]
-```
-
-### Créer des fichiers Markdown
-
-Stockez vos données dans `vault/` avec frontmatter YAML :
+Store your data in `vault/` with YAML frontmatter:
 
 ```markdown
 ---
-Classe: Personne
+Class: Person
 email: john.doe@example.com
 phone: +33 6 12 34 56 78
 relation: [client]
-rating: 5
 ---
 
 # John Doe
 
-Notes et informations supplémentaires sur John Doe...
-```
-
-### Utiliser l'application
-
-1. **Naviguer vers l'application CRM** dans Nextcloud
-2. **Parcourir les fichiers** dans la barre latérale gauche
-3. **Cliquer sur un fichier** pour l'ouvrir
-4. **Voir les métadonnées** dans le panneau de gauche (50% de largeur)
-5. **Éditer le contenu** dans le panneau de droite (50% de largeur)
-6. **Modifier les propriétés** en cliquant sur les icônes ou valeurs des champs
-7. **Sauvegarde automatique** déclenchée après 300ms d'inactivité
-
-### Points d'accès API
-
-#### Gestion des fichiers
-
-```typescript
-// List all Markdown files
-GET /apps/crm/files/md
-
-// Get file content with metadata
-GET /apps/crm/files/md?path=/vault/Contacts/John-Doe.md
-
-// Save file
-POST /apps/crm/files/md/save
-{
-  "path": "/vault/Contacts/John-Doe.md",
-  "content": "---\nClasse: Personne\n...\n---\n\n# Content"
-}
-```
-
-#### Configuration
-
-```typescript
-// List available class configs
-GET /apps/crm/config/list
-
-// Get config content
-GET /apps/crm/config/Contact.yaml
-```
-
-#### Settings
-
-```typescript
-// Get settings
-GET /apps/crm/settings/general
-
-// Save settings
-POST /apps/crm/settings/general
-{
-  "config_path": "/apps/crm/config",
-  "vault_path": "vault"
-}
-```
-
-## 🔧 Configuration
-
-### Paramètres administrateur
-
-Accès via : **Paramètres → Administration → Paramètres additionnels → Paramètres CRM**
-
-- **Chemin Config** : Emplacement des définitions de classes YAML
-  - Défaut : `/apps/crm/config`
-  - Peut être un chemin absolu ou relatif
-  
-- **Chemin Vault** : Emplacement des fichiers de données Markdown
-  - Défaut : `vault`
-  - Relatif au répertoire des fichiers de l'utilisateur
-
-### Variables d'environnement (Docker)
-
-Configurer dans `docker-compose.yml` :
-
-```yaml
-volumes:
-  - ./custom_apps:/var/www/html/custom_apps
-  - ./vault:/var/www/html/data/admin/files/vault
-```
-
-## 🎨 Personnalisation
-
-### Styles
-
-Modifier les fichiers CSS pour personnaliser l'apparence :
-
-- `css/crm-main.css` : Disposition principale (barre latérale, zone de contenu, éditeur)
-- `css/markdown-crm-display.css` : Composants d'affichage des métadonnées
-
-### Ajouter de nouveaux types de propriétés
-
-1. Définir dans la config YAML :
-```yaml
-properties:
-  - name: myfield
-    type: custom
-    icon: star
-```
-
-2. Implémenter la logique d'affichage dans `js/main.ts` ou étendre la bibliothèque Markdown-CRM
-
-### Icônes personnalisées
-
-Les icônes sont mappées vers des emoji dans `src/App.ts` (méthode `setIcon()`) :
-
-```typescript
-const iconMap: { [key: string]: string } = {
-  'mail': '📧',
-  'phone': '📞',
-  'star': '⭐',
-  // Add your own mappings
-};
-```
-
-## 🐛 Dépannage
-
-### Les classes ne se chargent pas
-
-- Vérifier `config_path` dans les paramètres admin
-- Vérifier que les fichiers YAML existent dans le répertoire config
-- Vérifier la console du navigateur pour les erreurs
-- Exécuter `docker exec nc_app ls /var/www/html/custom_apps/crm/config`
-
-### Les fichiers ne s'affichent pas
-
-- Vérifier `vault_path` dans les paramètres admin
-- S'assurer que le dossier vault existe dans les fichiers de l'utilisateur
-- Vérifier les permissions de fichier (doivent être lisibles par www-data)
-- Exécuter `docker exec nc_app ls /var/www/html/data/admin/files/vault`
-
-### La sauvegarde automatique ne fonctionne pas
-
-- Vérifier la console du navigateur pour les erreurs
-- Vérifier que les chemins de fichiers sont corrects
-- Tester le point d'accès de sauvegarde : `POST /apps/crm/files/md/save`
-- Vérifier que le fichier n'a pas été déplacé/renommé
-
-### Erreurs CSP
-
-Voir le guide détaillé dans la documentation légacy. Points clés :
-- Ne pas utiliser `FormulaProperty` (utilise `new Function()` bloqué par CSP)
-- Utiliser le wrapper `SafeMarkdownCRM` pour la conformité CSP
-- Vérifier la configuration CSP dans PageController
-
-### Problèmes de performance
-
-- Vérifier que le cache des métadonnées fonctionne (chercher "✅ Using cached metadata" dans la console)
-- Réduire le nombre de propriétés affichées simultanément
-- Optimiser les configurations YAML pour éviter les structures profondément imbriquées
-
-## 🔒 Sécurité
-
-- **Politique de sécurité du contenu** : CSP stricte appliquée par Nextcloud
-- **Isolation des utilisateurs** : Chaque utilisateur a son propre vault, les fichiers sont isolés
-- **Protection CSRF** : Tous les points d'accès POST protégés par des jetons CSRF
-- **Contrôle d'accès aux fichiers** : Utilise le système de permissions de fichiers de Nextcloud
-
-## 📊 Performance
-
-- **Mise en cache des métadonnées** : Cache TTL de 5 secondes réduit les lectures de fichiers de ~92%
-- **Debounce de sauvegarde automatique** : Délai de 300ms évite les sauvegardes excessives
-- **Chargement paresseux** : Charge uniquement le contenu des fichiers lorsqu'ils sont ouverts
-- **Bundle optimisé** : Build de production Webpack avec minification
-
-## 🧪 Tests
-
-```bash
-# Exécuter les tests unitaires
-npm test
-
-# Exécuter les tests PHP
-docker exec nc_app php occ app:check-code crm
-
-# Linter TypeScript
-npm run lint
-
-# Vérification de type
-npm run type-check
+Additional notes and information...
 ```
 
 ## 📚 Documentation
 
-- **Architecture** : Voir `INTEGRATION_SUMMARY.md` pour un aperçu détaillé de l'intégration
-- **Guide CSP** : Voir `CSP_GUIDE.md` pour les détails sur la politique de sécurité du contenu
-- **Paramètres** : Voir `SETTINGS_GUIDE.md` pour les options de configuration
-- **Utilisation** : Voir `USAGE_GUIDE.md` pour des exemples d'utilisation détaillés
+### Main Documentation
+- **[INDEX_DOCUMENTATION.md](docs/INDEX_DOCUMENTATION.md)** - 🗺️ Complete documentation index
 
-## 🤝 Contribuer
+### Contacts & Calendar Synchronization
+- **[QUICKSTART_SYNC.md](docs/QUICKSTART_SYNC.md)** - 🚀 Quick start guide (5 min)
+- **[SYNC_SETTINGS.md](docs/SYNC_SETTINGS.md)** - 📖 Complete synchronization documentation
+- **[FEATURE_SYNC.md](docs/FEATURE_SYNC.md)** - ✨ Feature presentation
+- **[INTERFACE_SCREENSHOT.md](docs/INTERFACE_SCREENSHOT.md)** - 🎨 Interface overview
 
-1. Forker le dépôt
-2. Créer une branche de fonctionnalité : `git checkout -b feature/ma-fonctionnalite`
-3. Commit les modifications : `git commit -am 'Ajout de ma fonctionnalité'`
-4. Pousser vers la branche : `git push origin feature/ma-fonctionnalite`
-5. Soumettre une pull request
+### Development & Technical
+- **[CHANGELOG_SYNC.md](docs/CHANGELOG_SYNC.md)** - 📝 Detailed technical changes
+- **[SUMMARY_IMPLEMENTATION.md](docs/SUMMARY_IMPLEMENTATION.md)** - 🔧 Implementation summary
+- **[INTEGRATION_WORKFLOW.md](./INTEGRATION_WORKFLOW.md)** - 🔄 Workflow filter documentation
+- **[CHANGELOG.md](./CHANGELOG.md)** - 📅 Version history
 
-## 📝 Licence
+## 🏗️ Architecture
 
-Ce projet est sous licence AGPL-3.0 - voir le fichier LICENSE pour plus de détails.
+```
+crm/
+├── lib/
+│   ├── AppInfo/
+│   │   └── Application.php               # App bootstrap
+│   ├── Flow/
+│   │   └── MarkdownMetadataCheck.php     # Workflow filter logic
+│   ├── Listener/
+│   │   └── LoadWorkflowScriptsListener.php # Loads workflow JS
+│   ├── Controller/
+│   │   ├── PageController.php            # Main page
+│   │   ├── FileController.php            # Files API
+│   │   └── SettingsController.php        # Admin settings
+│   └── Settings/
+│       └── AdminSettings.php             # Settings interface
+├── src/
+│   ├── App.ts                            # Main application
+│   ├── SafeMarkdownCRM.ts                # CSP-safe wrapper
+│   └── workflowengine-check.js           # Workflow interface
+├── js/
+│   ├── main.js                           # Main bundle
+│   └── workflowengine-check.js           # Workflow bundle
+├── config/                               # YAML class definitions
+└── vault/                                # Example data files
+```
 
-## 🙏 Remerciements
+## 🔧 Development
 
-- [Markdown-CRM](https://github.com/lasagne20/Markdown-CRM) - Bibliothèque principale pour la gestion des métadonnées Markdown
-- [Nextcloud](https://nextcloud.com/) - Plateforme cloud auto-hébergée
-- [TypeScript](https://www.typescriptlang.org/) - JavaScript type-safe
+### Build in watch mode
+```bash
+npm run dev
+```
 
-## 📞 Support
+### Lint & format
+```bash
+npm run lint:fix
+npm run stylelint:fix
+```
 
-- **Issues** : Signaler les bugs et demandes de fonctionnalités via GitHub Issues
-- **Discussions** : Rejoindre les discussions de la communauté sur GitHub
-- **Documentation** : Consulter le dossier docs pour les guides détaillés
+### Check workflow integration
+```bash
+# Verify that the check is registered
+docker exec nc_app php -r '
+  $manager = \OC::$server->get(\OCA\WorkflowEngine\Manager::class);
+  $checks = $manager->getBuildInChecks();
+  echo "Number of checks: " . count($checks) . "\n";
+  foreach($checks as $check) {
+    echo get_class($check) . "\n";
+  }
+'
+```
+
+## 🐛 Troubleshooting
+
+### Workflow filter doesn't appear
+
+**Check JavaScript console (F12):**
+```
+[CRM] Registering Markdown Metadata check...
+[CRM] Markdown Metadata check registered successfully
+```
+
+**If nothing appears:**
+- Clear cache: `php occ maintenance:repair`
+- Reload app: `php occ app:disable crm && php occ app:enable crm`
+- Verify that `js/workflowengine-check.js` exists
+- Check Manager.php patch
+
+### Error "preg_match(): Delimiter must not be alphanumeric"
+
+**Cause:** The "matches" operator expects a regex with `/pattern/` delimiters
+
+**Solutions:**
+- ✅ Use the **"matches"** operator with `Class:Location`
+- ✅ Use the **"matches expression"** operator with `/Class:Location/`
+- ❌ DO NOT use "matches expression" with `Class:Location`
+
+### Workflow doesn't block access
+
+1. **Check the file's YAML metadata:**
+   ```yaml
+   ---
+   Class: Location
+   ---
+   # File content
+   ```
+
+2. **Check logs:**
+   ```bash
+   docker exec nc_app tail -f /var/www/html/data/nextcloud.log | grep -i workflow
+   ```
+
+3. **Test the rule:**
+   - Create a simple rule: `Class:Location` with "matches" operator
+   - Try to access a file with `Class: Location` in the frontmatter
+   - Verify that the workflow action triggers
+
+### CRM files don't display
+
+- Verify that `vault/` exists in user files
+- Check permissions: `docker exec nc_app ls -la /var/www/html/data/admin/files/vault`
+- Check admin settings: Settings → Administration → Additional settings → CRM
+
+## 📄 License
+
+AGPL-3.0-or-later
+
+## 👥 Contributing
+
+Contributions welcome! Create an issue or pull request.
 
 ---
 
-**Conçu avec ❤️ pour la communauté Nextcloud**
+**Developed for CRM usage with Nextcloud** 🚀

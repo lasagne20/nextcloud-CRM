@@ -1,0 +1,36 @@
+{
+  "recommendations": [
+    // Extensions de test essentielles
+    "orta.vscode-jest",
+    "ms-playwright.playwright",
+    "recca0120.vscode-phpunit",
+    
+    // Extensions PHP
+    "bmewburn.vscode-intelephense-client",
+    "devsense.phptools-vscode",
+    "xdebug.php-debug",
+    
+    // Extensions TypeScript/JavaScript
+    "ms-vscode.vscode-typescript-next",
+    "bradlc.vscode-tailwindcss",
+    "christian-kohler.npm-intellisense",
+    
+    // Extensions Vue.js
+    "Vue.volar",
+    "Vue.vscode-typescript-vue-plugin",
+    
+    // Extensions utilitaires pour les tests
+    "humao.rest-client",
+    "streetsidesoftware.code-spell-checker",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-json",
+    
+    // Extensions de qualité de code
+    "SonarSource.sonarlint-vscode",
+    "ms-vscode.vscode-eslint",
+    
+    // Extensions Git
+    "mhutchie.git-graph",
+    "eamodio.gitlens"
+  ]
+}

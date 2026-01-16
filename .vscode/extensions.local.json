@@ -1,0 +1,6 @@
+{
+  "jest.disabledWorkspaceFolders": [],
+  "jest.enable": true,
+  "jest.jestCommandLine": "npm test --",
+  "jest.autoRun": "off"
+}

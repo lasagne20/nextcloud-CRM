@@ -1,0 +1,211 @@
+name: Tests CRM Nextcloud
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # Tests Frontend (Jest)
+  frontend-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run type checking
+      run: npm run type-check
+    
+    - name: Run frontend tests
+      run: npm run test:coverage
+    
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./tests/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+        fail_ci_if_error: false
+
+  # Tests PHP (PHPUnit)
+  php-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        php-version: ['8.1', '8.2', '8.3']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-version }}
+        coverage: xdebug
+        tools: composer
+    
+    - name: Validate composer.json
+      run: composer validate --strict
+    
+    - name: Cache Composer packages
+      id: composer-cache
+      uses: actions/cache@v3
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-php-
+    
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --dev
+    
+    - name: Run PHP linting
+      run: composer run-script lint
+    
+    - name: Run PHP tests
+      run: composer run-script test:unit
+    
+    - name: Upload PHP coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./tests/coverage.xml
+        flags: php
+        name: php-coverage
+        fail_ci_if_error: false
+
+  # Tests E2E (Playwright)
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, php-tests]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: 8.2
+        tools: composer
+    
+    - name: Install dependencies
+      run: |
+        npm ci
+        composer install --prefer-dist --no-progress
+    
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps
+    
+    - name: Start development server
+      run: |
+        npm run dev &
+        sleep 10
+      env:
+        CI: true
+    
+    - name: Run Playwright tests
+      run: npm run test:e2e
+    
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 30
+
+  # Analyse de code
+  code-analysis:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Shallow clones should be disabled for better relevancy
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: 8.2
+        tools: composer, phpstan
+    
+    - name: Install dependencies
+      run: |
+        npm ci
+        composer install --prefer-dist --no-progress --dev
+    
+    - name: Run ESLint
+      run: npm run lint --if-present
+    
+    - name: Run PHP CS Fixer (dry run)
+      run: composer run-script cs:check
+    
+    - name: Run PHPStan
+      run: composer run-script psalm --if-present
+
+  # Build et validation
+  build:
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, php-tests]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build application
+      run: npm run build
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-files
+        path: |
+          js/
+          css/
+        retention-days: 7
+
+  # Notification de statut
+  notify:
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, php-tests, e2e-tests, build]
+    if: always()
+    
+    steps:
+    - name: Send notification
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: |
+        echo "Tests completed for main branch"
+        # Ici, vous pouvez ajouter des notifications Slack, email, etc.

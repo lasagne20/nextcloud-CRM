@@ -1,0 +1,502 @@
+interface SyncConfig {
+    id: string;
+    enabled: boolean;
+    user_id: string;
+    addressbook?: string;
+    calendar?: string;
+    metadata_filter: Record<string, string>;
+}
+
+class MultiSyncSettingsManager {
+    private contactConfigs: SyncConfig[] = [];
+    private calendarConfigs: SyncConfig[] = [];
+    private users: string[] = [];
+    private autoSaveTimeout: NodeJS.Timeout | null = null;
+    private isAutoSaving = false;
+
+    constructor() {
+        console.log('=== Initialisation MultiSyncSettingsManager ===');
+        
+        // Attendre que le DOM soit prêt
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.initializeWithData());
+        } else {
+            this.initializeWithData();
+        }
+    }
+
+    private initializeWithData(): void {
+        console.log('=== Initialisation avec données ===');
+        
+        // Récupérer les données depuis les attributs data-
+        const crmElement = document.getElementById('crm-admin-settings');
+        
+        if (!crmElement) {
+            console.error('Élément crm-admin-settings non trouvé !');
+            this.users = ['admin'];
+            return;
+        }
+        
+        try {
+            // Récupérer les utilisateurs depuis les data attributes
+            const usersData = crmElement.dataset.users;
+            const debugUsersData = crmElement.dataset.debugUsers;
+            
+            console.log('Data users brut:', usersData);
+            console.log('Data debug users brut:', debugUsersData);
+            
+            this.users = usersData ? JSON.parse(usersData) : [];
+            
+            console.log('Utilisateurs parsés:', this.users);
+            console.log('Type des utilisateurs:', typeof this.users);
+            console.log('Est un array:', Array.isArray(this.users));
+            console.log('Longueur:', this.users.length);
+            
+            // Si aucun utilisateur trouvé, essayer avec les données de debug
+            if (this.users.length === 0) {
+                console.warn('Aucun utilisateur dans users, essai avec debugUsers...');
+                
+                const debugUsers = debugUsersData ? JSON.parse(debugUsersData) : [];
+                if (Array.isArray(debugUsers) && debugUsers.length > 0) {
+                    this.users = debugUsers.filter(u => u.enabled).map(u => u.uid);
+                    console.log('Utilisateurs récupérés depuis debugUsers:', this.users);
+                } else {
+                    console.warn('Aucun utilisateur trouvé nulle part, utilisation du fallback admin');
+                    this.users = ['admin'];
+                }
+            }
+            
+            // Charger les configurations
+            const contactsConfigs = crmElement.dataset.contactsConfigs || '[]';
+            const calendarConfigs = crmElement.dataset.calendarConfigs || '[]';
+            
+            this.contactConfigs = JSON.parse(contactsConfigs);
+            this.calendarConfigs = JSON.parse(calendarConfigs);
+            
+            console.log('✅ Données finales:', {
+                users: this.users,
+                contactConfigs: this.contactConfigs.length,
+                calendarConfigs: this.calendarConfigs.length
+            });
+            
+        } catch (e) {
+            console.error('Erreur parsing données:', e);
+            this.users = ['admin'];
+            this.contactConfigs = [];
+            this.calendarConfigs = [];
+        }
+
+        this.initEventListeners();
+        this.renderContactConfigs();
+        this.renderCalendarConfigs();
+        this.setupAutoSave();
+    }
+
+    private setupAutoSave() {
+        // Ajouter des listeners pour la sauvegarde automatique sur les champs globaux
+        const globalFields = [
+            'sync_contacts_global_enabled',
+            'sync_contacts_global_class', 
+            'sync_contacts_global_mapping',
+            'sync_contacts_global_filter',
+            'sync_calendar_global_enabled',
+            'sync_calendar_global_class',
+            'sync_calendar_global_mapping', 
+            'sync_calendar_global_filter'
+        ];
+
+        globalFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.addEventListener('input', () => this.scheduleAutoSave());
+                field.addEventListener('change', () => this.scheduleAutoSave());
+            }
+        });
+    }
+
+    private scheduleAutoSave() {
+        // Annuler le timeout précédent
+        if (this.autoSaveTimeout) {
+            clearTimeout(this.autoSaveTimeout);
+        }
+
+        // Programmer la sauvegarde après 1 seconde d'inactivité
+        this.autoSaveTimeout = setTimeout(() => {
+            this.autoSaveSyncSettings();
+        }, 1000);
+    }
+
+    private async autoSaveSyncSettings() {
+        if (this.isAutoSaving) return;
+        
+        try {
+            this.isAutoSaving = true;
+            const statusSpan = document.getElementById('crm-sync-save-status') as HTMLSpanElement;
+            
+            // Indication visuelle de sauvegarde automatique
+            if (statusSpan) {
+                statusSpan.textContent = '⏳ Sauvegarde automatique...';
+                statusSpan.className = 'info';
+            }
+
+            // Récupérer les valeurs globales
+            const contactsGlobalEnabled = (document.getElementById('sync_contacts_global_enabled') as HTMLInputElement).checked;
+            const contactsGlobalClass = (document.getElementById('sync_contacts_global_class') as HTMLInputElement).value;
+            const contactsGlobalMapping = (document.getElementById('sync_contacts_global_mapping') as HTMLTextAreaElement).value;
+            const contactsGlobalFilter = (document.getElementById('sync_contacts_global_filter') as HTMLTextAreaElement).value;
+
+            const calendarGlobalEnabled = (document.getElementById('sync_calendar_global_enabled') as HTMLInputElement).checked;
+            const calendarGlobalClass = (document.getElementById('sync_calendar_global_class') as HTMLInputElement).value;
+            const calendarGlobalMapping = (document.getElementById('sync_calendar_global_mapping') as HTMLTextAreaElement).value;
+            const calendarGlobalFilter = (document.getElementById('sync_calendar_global_filter') as HTMLTextAreaElement).value;
+
+            // Valider les JSON
+            try {
+                JSON.parse(contactsGlobalMapping || '{}');
+                JSON.parse(contactsGlobalFilter || '{}');
+                JSON.parse(calendarGlobalMapping || '{}');
+                JSON.parse(calendarGlobalFilter || '{}');
+            } catch (e) {
+                if (statusSpan) {
+                    this.showStatus('⚠️ Erreur JSON - sauvegarde automatique annulée', 'error', statusSpan);
+                }
+                return;
+            }
+
+            const response = await fetch('/apps/crm/settings/sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'requesttoken': (window as any).OC.requestToken
+                },
+                body: JSON.stringify({
+                    sync_contacts_global_enabled: contactsGlobalEnabled,
+                    sync_contacts_global_class: contactsGlobalClass,
+                    sync_contacts_global_mapping: contactsGlobalMapping || '{}',
+                    sync_contacts_global_filter: contactsGlobalFilter || '{}',
+                    sync_contacts_configs: JSON.stringify(this.contactConfigs),
+                    
+                    sync_calendar_global_enabled: calendarGlobalEnabled,
+                    sync_calendar_global_class: calendarGlobalClass,
+                    sync_calendar_global_mapping: calendarGlobalMapping || '{}',
+                    sync_calendar_global_filter: calendarGlobalFilter || '{}',
+                    sync_calendar_configs: JSON.stringify(this.calendarConfigs)
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Erreur lors de la sauvegarde automatique');
+            }
+
+            if (statusSpan) {
+                statusSpan.textContent = '✅ Sauvegardé automatiquement';
+                statusSpan.className = 'success';
+                
+                // Effacer le message après 3 secondes
+                setTimeout(() => {
+                    statusSpan.textContent = '';
+                    statusSpan.className = '';
+                }, 3000);
+            }
+
+        } catch (error) {
+            console.error('Erreur sauvegarde automatique:', error);
+            const statusSpan = document.getElementById('crm-sync-save-status') as HTMLSpanElement;
+            if (statusSpan) {
+                this.showStatus('❌ Erreur sauvegarde automatique', 'error', statusSpan);
+            }
+        } finally {
+            this.isAutoSaving = false;
+        }
+    }
+
+    private initEventListeners() {
+        // Boutons pour ajouter des configurations
+        document.getElementById('add-contact-config')?.addEventListener('click', () => {
+            this.addContactConfig();
+        });
+
+        document.getElementById('add-calendar-config')?.addEventListener('click', () => {
+            this.addCalendarConfig();
+        });
+
+        // Bouton de sauvegarde
+        document.getElementById('crm-save-sync-settings')?.addEventListener('click', () => {
+            this.saveSyncSettings();
+        });
+    }
+
+    private addContactConfig() {
+        const newConfig: SyncConfig = {
+            id: 'contact_' + Date.now(),
+            enabled: true,
+            user_id: this.users[0] || 'admin',
+            addressbook: 'contacts',
+            metadata_filter: {}
+        };
+        
+        this.contactConfigs.push(newConfig);
+        this.renderContactConfigs();
+        this.scheduleAutoSave();
+    }
+
+    private addCalendarConfig() {
+        const newConfig: SyncConfig = {
+            id: 'calendar_' + Date.now(),
+            enabled: true,
+            user_id: this.users[0] || 'admin',
+            calendar: 'personal',
+            metadata_filter: {}
+        };
+        
+        this.calendarConfigs.push(newConfig);
+        this.renderCalendarConfigs();
+        this.scheduleAutoSave();
+    }
+
+    private renderContactConfigs() {
+        const container = document.getElementById('contacts-configs-container');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        this.contactConfigs.forEach((config, index) => {
+            const configEl = this.createConfigElement(config, index, 'contact');
+            container.appendChild(configEl);
+        });
+    }
+
+    private renderCalendarConfigs() {
+        const container = document.getElementById('calendar-configs-container');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        this.calendarConfigs.forEach((config, index) => {
+            const configEl = this.createConfigElement(config, index, 'calendar');
+            container.appendChild(configEl);
+        });
+    }
+
+    private createConfigElement(config: SyncConfig, index: number, type: 'contact' | 'calendar'): HTMLElement {
+        console.log(`Création élément config ${type} ${index}:`, config);
+        console.log('Utilisateurs disponibles pour sélecteur:', this.users);
+        
+        const div = document.createElement('div');
+        div.className = 'config-item';
+        
+        // Générer les options utilisateur
+        let userOptions = '';
+        if (this.users.length > 0) {
+            userOptions = this.users.map(user => 
+                `<option value="${user}" ${config.user_id === user ? 'selected' : ''}>${user}</option>`
+            ).join('');
+            console.log('Options utilisateur générées:', userOptions);
+        } else {
+            userOptions = `<option value="admin" selected>admin (défaut)</option>`;
+            console.log('Fallback vers admin utilisé');
+        }
+        
+        div.innerHTML = `
+            <div class="config-header">
+                <span class="config-title">${type === 'contact' ? 'Contact' : 'Calendrier'} ${index + 1}</span>
+                <button type="button" class="button error" onclick="this.closest('.config-item').remove(); MultiSyncApp.removeConfig('${config.id}', '${type}')">
+                    🗑️ Supprimer
+                </button>
+            </div>
+            
+            <div class="crm-setting-item">
+                <label>
+                    <input type="checkbox" ${config.enabled ? 'checked' : ''} 
+                           onchange="MultiSyncApp.updateConfigEnabled('${config.id}', '${type}', this.checked)" />
+                    Activé
+                </label>
+            </div>
+
+            <div class="crm-setting-item">
+                <label>Utilisateur cible</label>
+                <select onchange="MultiSyncApp.updateConfigUser('${config.id}', '${type}', this.value)">
+                    ${userOptions}
+                </select>
+                <p class="crm-setting-hint">Utilisateur Nextcloud vers lequel synchroniser</p>
+            </div>
+
+            <div class="crm-setting-item">
+                <label>${type === 'contact' ? 'Carnet d\'adresses' : 'Calendrier'}</label>
+                <input type="text" 
+                       value="${type === 'contact' ? (config.addressbook || 'contacts') : (config.calendar || 'personal')}"
+                       placeholder="${type === 'contact' ? 'contacts' : 'personal'}"
+                       onchange="MultiSyncApp.updateConfigTarget('${config.id}', '${type}', this.value)" />
+                <p class="crm-setting-hint">
+                    Nom du ${type === 'contact' ? 'carnet d\'adresses' : 'calendrier'} de destination
+                </p>
+            </div>
+
+            <div class="crm-setting-item">
+                <label>Filtre spécifique (JSON)</label>
+                <textarea rows="4" 
+                          style="width: 100%; font-family: monospace;"
+                          placeholder='{"Assigné": "John", "Priorité": "Haute"}'
+                          onchange="MultiSyncApp.updateConfigFilter('${config.id}', '${type}', this.value)">${JSON.stringify(config.metadata_filter, null, 2)}</textarea>
+                <p class="crm-setting-hint">
+                    Filtre spécifique à cette configuration (en plus du filtre global).<br>
+                    <strong>Exemples ${type === 'contact' ? 'contacts' : 'calendrier'} :</strong><br>
+                    ${type === 'contact' ? 
+                        '• Par utilisateur : <code>{"Assigné": "admin"}</code><br>' +
+                        '• Par département : <code>{"Département": "IT", "Statut": "Actif"}</code><br>' +
+                        '• Multi-critères : <code>{"Assigné": "john", "Type": "Client", "Priorité": "Haute"}</code>'
+                        :
+                        '• Par utilisateur : <code>{"Assigné": "admin"}</code><br>' +
+                        '• Par priorité : <code>{"Priorité": "Haute", "Type": "Réunion"}</code><br>' +
+                        '• Par statut : <code>{"Statut": "Planifié", "Assigné": "jane"}</code>'
+                    }
+                </p>
+            </div>
+        `;
+        return div;
+    }
+
+    // Méthodes publiques pour les callbacks
+    removeConfig(id: string, type: 'contact' | 'calendar') {
+        if (type === 'contact') {
+            this.contactConfigs = this.contactConfigs.filter(c => c.id !== id);
+        } else {
+            this.calendarConfigs = this.calendarConfigs.filter(c => c.id !== id);
+        }
+        this.scheduleAutoSave();
+    }
+
+    updateConfigEnabled(id: string, type: 'contact' | 'calendar', enabled: boolean) {
+        const configs = type === 'contact' ? this.contactConfigs : this.calendarConfigs;
+        const config = configs.find(c => c.id === id);
+        if (config) {
+            config.enabled = enabled;
+            this.scheduleAutoSave();
+        }
+    }
+
+    updateConfigUser(id: string, type: 'contact' | 'calendar', userId: string) {
+        const configs = type === 'contact' ? this.contactConfigs : this.calendarConfigs;
+        const config = configs.find(c => c.id === id);
+        if (config) {
+            config.user_id = userId;
+            this.scheduleAutoSave();
+        }
+    }
+
+    updateConfigTarget(id: string, type: 'contact' | 'calendar', target: string) {
+        const configs = type === 'contact' ? this.contactConfigs : this.calendarConfigs;
+        const config = configs.find(c => c.id === id);
+        if (config) {
+            if (type === 'contact') {
+                config.addressbook = target;
+            } else {
+                config.calendar = target;
+            }
+            this.scheduleAutoSave();
+        }
+    }
+
+    updateConfigFilter(id: string, type: 'contact' | 'calendar', filterJson: string) {
+        try {
+            const filter = JSON.parse(filterJson || '{}');
+            const configs = type === 'contact' ? this.contactConfigs : this.calendarConfigs;
+            const config = configs.find(c => c.id === id);
+            if (config) {
+                config.metadata_filter = filter;
+                this.scheduleAutoSave();
+            }
+        } catch (e) {
+            console.error('Erreur parsing filter:', e);
+            // Ne pas sauvegarder si JSON invalide
+        }
+    }
+
+    private async saveSyncSettings() {
+        try {
+            const saveBtn = document.getElementById('crm-save-sync-settings') as HTMLButtonElement;
+            const statusSpan = document.getElementById('crm-sync-save-status') as HTMLSpanElement;
+            
+            saveBtn.disabled = true;
+            saveBtn.textContent = '⏳ Enregistrement...';
+
+            // Récupérer les valeurs globales
+            const contactsGlobalEnabled = (document.getElementById('sync_contacts_global_enabled') as HTMLInputElement).checked;
+            const contactsGlobalClass = (document.getElementById('sync_contacts_global_class') as HTMLInputElement).value;
+            const contactsGlobalMapping = (document.getElementById('sync_contacts_global_mapping') as HTMLTextAreaElement).value;
+            const contactsGlobalFilter = (document.getElementById('sync_contacts_global_filter') as HTMLTextAreaElement).value;
+
+            const calendarGlobalEnabled = (document.getElementById('sync_calendar_global_enabled') as HTMLInputElement).checked;
+            const calendarGlobalClass = (document.getElementById('sync_calendar_global_class') as HTMLInputElement).value;
+            const calendarGlobalMapping = (document.getElementById('sync_calendar_global_mapping') as HTMLTextAreaElement).value;
+            const calendarGlobalFilter = (document.getElementById('sync_calendar_global_filter') as HTMLTextAreaElement).value;
+
+            // Valider les JSON
+            try {
+                JSON.parse(contactsGlobalMapping || '{}');
+                JSON.parse(contactsGlobalFilter || '{}');
+                JSON.parse(calendarGlobalMapping || '{}');
+                JSON.parse(calendarGlobalFilter || '{}');
+            } catch (e) {
+                this.showStatus('Erreur: Un des JSON globaux est invalide', 'error', statusSpan);
+                return;
+            }
+
+            const response = await fetch('/apps/crm/settings/sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'requesttoken': (window as any).OC.requestToken
+                },
+                body: JSON.stringify({
+                    sync_contacts_global_enabled: contactsGlobalEnabled,
+                    sync_contacts_global_class: contactsGlobalClass,
+                    sync_contacts_global_mapping: contactsGlobalMapping || '{}',
+                    sync_contacts_global_filter: contactsGlobalFilter || '{}',
+                    sync_contacts_configs: JSON.stringify(this.contactConfigs),
+                    
+                    sync_calendar_global_enabled: calendarGlobalEnabled,
+                    sync_calendar_global_class: calendarGlobalClass,
+                    sync_calendar_global_mapping: calendarGlobalMapping || '{}',
+                    sync_calendar_global_filter: calendarGlobalFilter || '{}',
+                    sync_calendar_configs: JSON.stringify(this.calendarConfigs)
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Erreur lors de l\'enregistrement');
+            }
+
+            const data = await response.json();
+            this.showStatus(data.message || 'Configurations enregistrées !', 'success', statusSpan);
+
+        } catch (error) {
+            console.error('Erreur:', error);
+            const statusSpan = document.getElementById('crm-sync-save-status') as HTMLSpanElement;
+            this.showStatus('Erreur lors de l\'enregistrement', 'error', statusSpan);
+        } finally {
+            const saveBtn = document.getElementById('crm-save-sync-settings') as HTMLButtonElement;
+            saveBtn.disabled = false;
+            saveBtn.textContent = '💾 Enregistrer toutes les configurations de synchronisation';
+        }
+    }
+
+    private showStatus(message: string, type: 'success' | 'error', statusElement: HTMLElement) {
+        statusElement.textContent = message;
+        statusElement.className = type;
+        
+        setTimeout(() => {
+            if (type === 'success') {
+                statusElement.textContent = '';
+                statusElement.className = '';
+            }
+        }, 5000);
+    }
+}
+
+// Rendre la classe accessible globalement pour les callbacks
+(window as any).MultiSyncApp = new MultiSyncSettingsManager();
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("✅ Multi-sync admin.ts chargé");
+});

@@ -53,6 +53,24 @@ return [
     ],
 
     [
+        'name' => 'settings#saveSyncSettings',
+        'url'  => '/settings/sync',
+        'verb' => 'POST'
+    ],
+
+    [
+        'name' => 'settings#saveAnimationConfigs',
+        'url'  => '/settings/saveAnimationConfigs',
+        'verb' => 'POST'
+    ],
+
+    [
+        'name' => 'settings#getUserCalendars',
+        'url'  => '/settings/getUserCalendars/{userId}',
+        'verb' => 'GET'
+    ],
+
+    [
         'name' => 'settings#listMdFiles',
         'url' => '/settings/md-files',
         'verb' => 'GET'

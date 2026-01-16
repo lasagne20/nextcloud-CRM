@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog - English version
 
 All notable changes to this project will be documented in this file.
 
@@ -9,4 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- First release
+- **Array Properties**: Automatic creation of multiple events from a single Markdown file
+  - Configuration interface with filter management, title and description formats
+  - Support for dynamic variables: `{fieldName}`, `{index}`, `{filename}`
+  - Access to root metadata via `_root.FieldName` and content via `_content`
+  - Smart duplicate management with unique IDs
+  - Complete documentation in [docs/ARRAY_PROPERTIES.md](docs/ARRAY_PROPERTIES.md)
+
+- **Enhanced admin interface**: Dark interface with better readability for array properties configuration
+
+- **Contacts & Calendar Synchronization**: Automatic synchronization from Markdown files to Nextcloud
+
+- **Workflow filter by metadata**: Create workflow rules based on YAML metadata
+
+### Fixed
+
+- Fixed array properties configuration save (added @CSRFCheck, using FormData)
+- Improved configuration persistence after Nextcloud restart

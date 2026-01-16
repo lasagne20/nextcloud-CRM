@@ -1,0 +1,8 @@
+{
+  "jest.autoRun": "off",
+  "jest.runMode": "on-demand",
+  "jest.testExplorer": {
+    "enabled": true,
+    "showClassicStatus": true
+  }
+}

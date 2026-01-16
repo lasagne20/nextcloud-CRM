@@ -8,17 +8,14 @@ use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
-use OCP\Files\IRootFolder;
-use Psr\Log\LoggerInterface;
-use OCP\EventDispatcher\IEventDispatcher; 
-use OCP\Contacts\IManager as ContactsManager;
-use OCP\IUserManager;
+use OCP\AppFramework\Http\Events\BeforeTemplateRenderedEvent;
 use OCP\Files\Events\Node\NodeWrittenEvent;
 
-use OCA\CRM\Listener\MarkdownListener;
-use OCP\IConfig;
-
-
+/**
+ * CRM Application
+ * 
+ * Provides workflow filtering by markdown YAML frontmatter metadata
+ */
 class Application extends App implements IBootstrap {
     public const APP_ID = 'crm';
 
@@ -27,27 +24,20 @@ class Application extends App implements IBootstrap {
     }
 
     public function register(IRegistrationContext $context): void {
-        // Pas de services à enregistrer pour l'instant
+        // Register JavaScript to load the MarkdownMetadataCheck UI in workflow settings
+        $context->registerEventListener(
+            BeforeTemplateRenderedEvent::class,
+            \OCA\CRM\Listener\LoadWorkflowScriptsListener::class
+        );
+
+        // Register Markdown file listener for contact/calendar synchronization
+        $context->registerEventListener(
+            NodeWrittenEvent::class,
+            \OCA\CRM\Listener\MarkdownListener::class
+        );
     }
 
     public function boot(IBootContext $context): void {
-        $logger = \OC::$server->get(LoggerInterface::class);
-        $rootFolder = \OC::$server->get(IRootFolder::class);
-        $contactsManager = \OC::$server->get(ContactsManager::class);
-        $userManager = \OC::$server->get(IUserManager::class);
-        $eventDispatcher = \OC::$server->get(IEventDispatcher::class);
-
-        $userSession = \OC::$server->get(\OCP\IUserSession::class);
-
-		$config = \OC::$server->get(IConfig::class);
-		$markdownListener = new MarkdownListener($logger, $rootFolder, $userSession, $config);
-
-
-        // Enregistrement du listener sur NodeWrittenEvent
-        $eventDispatcher->addListener(NodeWrittenEvent::class, [$markdownListener, 'handle']);
-
-		
-
-        $logger->info('CRM Application booting... MarkdownListener registered for NodeWrittenEvent.');
+        // Application is ready
     }
 }

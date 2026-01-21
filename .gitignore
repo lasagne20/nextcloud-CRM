@@ -7,9 +7,16 @@
 /.php-cs-fixer.cache
 /tests/.phpunit.cache
 
+# Signing keys (NEVER commit private keys!)
+*.key
+.nextcloud/
+scripts/
 /node_modules/
 /js/
 /css/
+
+# Build artifacts
+/build/
 
 # Legacy test directory (use tests/ instead)
 /test/

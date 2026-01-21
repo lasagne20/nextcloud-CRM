@@ -10,7 +10,9 @@
 	<author mail="leo.dupontrenoux@gmail.com">Léo Dupont</author>
 	<namespace>CRM</namespace>
 	<category>tools</category>
-	<bugs>https://github.com/votre-repo/crm/issues</bugs>
+	<bugs>https://github.com/lasagne20/nextcloud-CRM/issues</bugs>
+	<repository type="git">https://github.com/lasagne20/nextcloud-CRM</repository>
+	<screenshot>https://raw.githubusercontent.com/lasagne20/nextcloud-CRM/main/docs/screenshots/interface.png</screenshot>
 	<dependencies>
 		<nextcloud min-version="29" max-version="32"/>
 	</dependencies>
@@ -26,4 +28,20 @@
 	<settings>
 		<admin>OCA\CRM\Settings\AdminSettings</admin>
 	</settings>
+	<signature>
+-----BEGIN PUBLIC KEY-----
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAwWrvX/pcDkBLQigtNCOW
+Vq8bLJtkuQws1xKAZbjA7YAiBqWuU1McAEPNCreQvw4DQplx/pzcR2WtDMNyBU6E
+rovwqfHH3Jxl946I/618Wdt7ua1JQyL5JV+35hYXvlQMnn0WZkg8C40DgCrLV+uH
+OBEPYwCcNOed4WrUsnZIMPoXe8gI1L8y3NuhTNNXntagh9VhP3VH/sLIe5UZ6tUu
+rN71kbhhca5115ixmxPIiDNrXR8I7I3HYORx2puiO+SYUaQ3Xg8v+nQarJYWVRjT
+wyIKPo6Apg3GceJidsI60cVwPcjaSusSjczuAVS2UM8vYXS8nlVvfaCuyfsqs5Ln
+jQj4a8+BbIwjR2dCvfWCqRLbZMk0CHseOGcgwEYlV1lcF6OKWTu/0BqQmLIrgvBV
+uz9cBqbUiUW3X5fGW/tUogbw3S7ZkUVpaLFRHbb2Y/XzjMOM/T/JMeOIDTcdjGMK
+5XL4if9Q+I1/SwINmbUSNPwNgbk1St76hgZRhoYAs0oRqYz7x64WF5/7Ha1Vc0+1
+67RO8qo8fYWrThSb4QPeSPaCpRjwDMQGZxXX6SK1+E4nttu7I22O7OV9xJ+3erIO
+GbRbzfelzzelTA+nyHHAQ6UAUFJwDbZAvU3jpdpzqFU64WCOYUOTxAmZkAzAxsd/
+Zl3Oplfi5NcJIiT3qs8pvscCAwEAAQ==
+-----END PUBLIC KEY-----
+	</signature>
 </info>

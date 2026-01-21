@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [0.1.0] - 2026-01-16
+
+### Added
+
 - **Array Properties**: Automatic creation of multiple events from a single Markdown file
   - Configuration interface with filter management, title and description formats
   - Support for dynamic variables: `{fieldName}`, `{index}`, `{filename}`
@@ -19,10 +27,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Enhanced admin interface**: Dark interface with better readability for array properties configuration
 
 - **Contacts & Calendar Synchronization**: Automatic synchronization from Markdown files to Nextcloud
+  - Support for multiple sync configurations per type
+  - Metadata mapping and filtering
+  - Array properties for bulk event creation
 
 - **Workflow filter by metadata**: Create workflow rules based on YAML metadata
+
+- **Comprehensive test suite**: 48 tests covering Unit, Integration, and E2E scenarios
+  - PHPUnit tests for backend logic
+  - Jest tests for frontend components
+  - Playwright tests for end-to-end workflows
 
 ### Fixed
 
 - Fixed array properties configuration save (added @CSRFCheck, using FormData)
 - Improved configuration persistence after Nextcloud restart
+- PHP 8.3 compatibility improvements

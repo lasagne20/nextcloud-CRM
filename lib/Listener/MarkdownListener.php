@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace OCA\CRM\Listener;
 
 use OCP\EventDispatcher\Event;
+use OCP\EventDispatcher\IEventListener;
 use OCP\Files\Events\Node\NodeWrittenEvent;
 use Psr\Log\LoggerInterface;
 use OCP\Files\IRootFolder;
@@ -15,7 +16,7 @@ use OCA\DAV\CardDAV\CardDavBackend;
 use Sabre\VObject\Component\VCard;
 use OCA\DAV\CalDAV\CalDavBackend;
 
-class MarkdownListener {
+class MarkdownListener implements IEventListener {
     private LoggerInterface $logger;
     private IRootFolder $rootFolder;
     private ContactsManager $contactsManager;
@@ -504,6 +505,24 @@ class MarkdownListener {
         if (strpos($fieldName, '_root.') === 0) {
             // Accès aux métadonnées racine
             $rootField = substr($fieldName, 6); // Enlever "_root."
+            
+            // Support pour les accès imbriqués comme "clients[0].client"
+            if (preg_match('/^([^\[]+)\[(\d+)\]\.(.+)$/', $rootField, $matches)) {
+                $arrayField = $matches[1];    // "clients"
+                $index = (int)$matches[2];     // 0
+                $nestedField = $matches[3];    // "client"
+                
+                if (isset($metadata[$arrayField]) && is_array($metadata[$arrayField])) {
+                    $array = $metadata[$arrayField];
+                    if (isset($array[$index]) && is_array($array[$index]) && isset($array[$index][$nestedField])) {
+                        $value = $array[$index][$nestedField];
+                        // Extraire le label si c'est un lien Obsidian
+                        return is_string($value) ? $this->extractObsidianLabel($value) : (string)$value;
+                    }
+                }
+                return '';
+            }
+            
             return isset($metadata[$rootField]) ? (string)$metadata[$rootField] : '';
         } else {
             // Accès aux données de l'élément du tableau

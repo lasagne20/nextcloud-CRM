@@ -243,6 +243,60 @@ MD;
         $this->listener->handle($event);
     }
 
+    public function testTitleFormatWithRootArrayAccess(): void
+    {
+        $markdownContent = <<<'MD'
+---
+Classe: Projet
+Nom: Mon Projet
+clients:
+  - client: [[Entreprise A]]
+    role: Principal
+  - client: [[Entreprise B]]
+    role: Secondaire
+actions:
+  - date: 2026-02-15
+    titre: Réunion kickoff
+  - date: 2026-03-01
+    titre: Livraison phase 1
+---
+
+# Projet avec clients multiples
+MD;
+
+        $file = $this->createMock(File::class);
+        $file->method('getMimetype')->willReturn('text/markdown');
+        $file->method('getName')->willReturn('projet-test.md');
+        $file->method('getPath')->willReturn('/files/admin/projets/projet-test.md');
+        $file->method('fopen')->willReturn($this->createStringStream($markdownContent));
+        
+        $this->config->method('getAppValue')
+            ->willReturnMap([
+                ['crm', 'sync_contacts_global_enabled', '0', '0'],
+                ['crm', 'sync_calendar_global_enabled', '0', '1'],
+                ['crm', 'sync_calendar_global_class', 'Action', 'Projet'],
+                ['crm', 'sync_calendar_global_array', '', 'actions'],
+                ['crm', 'sync_calendar_global_calendar', 'personal', 'personal'],
+                ['crm', 'sync_calendar_global_date_field', 'date', 'date'],
+                ['crm', 'sync_calendar_global_title_format', '{titre}', '{_root.clients[0].client} - {titre}'],
+                ['crm', 'sync_calendar_global_id_format', 'event_{index}', 'event_{index}'],
+                ['crm', 'sync_calendar_global_description_fields', '[]', '["_root.Nom"]'],
+                ['crm', 'sync_calendar_global_location_field', 'lieu', 'lieu'],
+                ['crm', 'sync_calendar_global_assigned_field', 'assignés', 'assignés'],
+                ['crm', 'sync_calendar_configs', '[]', '[]'],
+            ]);
+        
+        $event = $this->createMock(NodeWrittenEvent::class);
+        $event->method('getNode')->willReturn($file);
+        
+        // Devrait logger que le titre contient "Entreprise A - Réunion kickoff"
+        $this->logger->expects($this->atLeastOnce())
+            ->method('info')
+            ->with($this->stringContains('Entreprise A'));
+        
+        $this->listener->handle($event);
+    }
+
     /**
      * Helper to create a stream from a string
      */

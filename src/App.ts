@@ -392,6 +392,34 @@ export class NextcloudApp implements IApp {
         window.open(absoluteMediaPath, '_blank');
     }
 
+    // Required IApp methods
+    selectFromList<T>(items: T[], options: { multiple: boolean; title?: string }): Promise<T | T[] | null> {
+        // Simple implementation using browser prompt
+        const itemsStr = items.map((item, i) => `${i + 1}. ${String(item)}`).join('\\n');
+        const prompt = `${options.title || 'Select an item'}\\n\\n${itemsStr}\\n\\nEnter number${options.multiple ? 's (comma-separated)' : ''}:`;
+        const input = window.prompt(prompt);
+        
+        if (!input) return Promise.resolve(null);
+        
+        if (options.multiple) {
+            const indices = input.split(',').map(s => parseInt(s.trim()) - 1).filter(i => i >= 0 && i < items.length);
+            return Promise.resolve(indices.length > 0 ? indices.map(i => items[i]) : null);
+        } else {
+            const index = parseInt(input) - 1;
+            return Promise.resolve(index >= 0 && index < items.length ? items[index] : null);
+        }
+    }
+
+    needDisplayRefresh(): boolean {
+        // Nextcloud handles display refresh automatically
+        return false;
+    }
+
+    getCurrentFile(): IFile | null {
+        // Not applicable in Nextcloud context
+        return null;
+    }
+
     // Utility functions
     async waitForFileMetaDataUpdate(filePath: string, key: string, callback: () => Promise<void>): Promise<void> {
         // Attendre un court instant pour que les métadonnées soient mises à jour

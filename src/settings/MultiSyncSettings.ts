@@ -7,7 +7,7 @@ interface SyncConfig {
     metadata_filter: Record<string, string>;
 }
 
-class MultiSyncSettingsManager {
+export class MultiSyncSettingsManager {
     private contactConfigs: SyncConfig[] = [];
     private calendarConfigs: SyncConfig[] = [];
     private users: string[] = [];

@@ -1,7 +1,7 @@
 
 export class MDManagementApp {
-    private container: HTMLDivElement;
-    private addBtn: HTMLButtonElement;
+    private container?: HTMLDivElement;
+    private addBtn?: HTMLButtonElement;
     private sectionCount = 0;
 
 

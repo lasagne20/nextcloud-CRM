@@ -5,7 +5,7 @@
 	<name>CRM</name>
 	<summary>CRM avec intégration Markdown-CRM</summary>
 	<description>Application de gestion CRM avec support des fichiers Markdown et métadonnées YAML</description>
-	<version>0.1.0</version>
+	<version>0.1.1</version>
 	<licence>agpl</licence>
 	<author mail="leo.dupontrenoux@gmail.com">Léo Dupont</author>
 	<namespace>CRM</namespace>

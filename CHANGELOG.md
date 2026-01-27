@@ -13,6 +13,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.1.1] - 2026-01-27
+
+### Fixed
+- Fixed TypeScript compilation errors in `NextcloudApp` class
+  - Added missing IApp interface methods: `selectFromList()`, `needDisplayRefresh()`, `getCurrentFile()`
+  - Implemented proper generic typing for `selectFromList()` method
+- Fixed uninitialized property errors in `AdminSettings.ts`
+  - Made `container` and `addBtn` properties optional
+- Fixed duplicate identifier error in `MultiSyncSettings.ts`
+  - Exported `MultiSyncSettingsManager` class properly
+- All TypeScript errors resolved, clean build achieved
+
+### Changed
+- Improved code quality and type safety across the application
+
 ## [0.1.0] - 2026-01-16
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "crm",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "CRM application for Nextcloud with Markdown-CRM integration",
   "main": "js/main.js",
   "directories": {

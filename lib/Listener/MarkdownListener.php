@@ -9,7 +9,6 @@ use OCP\Files\Events\Node\NodeWrittenEvent;
 use Psr\Log\LoggerInterface;
 use OCP\Files\IRootFolder;
 use OCP\Files\File;
-use OCP\Contacts\IManager as ContactsManager;
 use OCP\IUserSession;
 use OCP\IConfig;
 use OCA\DAV\CardDAV\CardDavBackend;
@@ -19,7 +18,6 @@ use OCA\DAV\CalDAV\CalDavBackend;
 class MarkdownListener implements IEventListener {
     private LoggerInterface $logger;
     private IRootFolder $rootFolder;
-    private ContactsManager $contactsManager;
     private IUserSession $userSession;
     private IConfig $config;
 

@@ -184,11 +184,13 @@ class SyncSettingsManager {
 
     private async saveSyncSettings() {
         try {
-            this.saveBtn.disabled = true;
-            this.saveBtn.textContent = '⏳ Enregistrement...';
+            if (this.saveBtn) {
+                this.saveBtn.disabled = true;
+                this.saveBtn.textContent = '⏳ Enregistrement...';
+            }
 
             // Valider le JSON du mapping contacts
-            let contactsMappingValue = this.contactsMappingTextarea.value.trim();
+            let contactsMappingValue = this.contactsMappingTextarea?.value?.trim() || '{}';
             if (!contactsMappingValue) {
                 contactsMappingValue = '{}';
             }
@@ -200,7 +202,7 @@ class SyncSettingsManager {
             }
 
             // Valider le JSON du mapping calendrier
-            let calendarMappingValue = this.calendarMappingTextarea.value.trim();
+            let calendarMappingValue = this.calendarMappingTextarea?.value?.trim() || '{}';
             if (!calendarMappingValue) {
                 calendarMappingValue = '{}';
             }
@@ -224,7 +226,7 @@ class SyncSettingsManager {
             }
 
             // Valider le JSON du filtre métadonnées
-            let metadataFilterValue = this.metadataFilterTextarea.value.trim();
+            let metadataFilterValue = this.metadataFilterTextarea?.value?.trim() || '{}';
             if (!metadataFilterValue) {
                 metadataFilterValue = '{}';
             }
@@ -236,7 +238,7 @@ class SyncSettingsManager {
             }
 
             // Valider le JSON du mapping utilisateur
-            let userMappingValue = this.userMappingTextarea.value.trim();
+            let userMappingValue = this.userMappingTextarea?.value?.trim() || '{}';
             if (!userMappingValue) {
                 userMappingValue = '{}';
             }
@@ -254,15 +256,15 @@ class SyncSettingsManager {
                     'requesttoken': (window as any).OC.requestToken
                 },
                 body: JSON.stringify({
-                    sync_contacts_enabled: this.contactsEnabledCheckbox.checked,
-                    sync_contacts_user: this.contactsUserSelect.value,
-                    sync_contacts_addressbook: this.contactsAddressbookInput.value.trim(),
-                    sync_contacts_class: this.contactsClassInput.value.trim() || 'Personne',
+                    sync_contacts_enabled: this.contactsEnabledCheckbox?.checked || false,
+                    sync_contacts_user: this.contactsUserSelect?.value || '',
+                    sync_contacts_addressbook: this.contactsAddressbookInput?.value?.trim() || '',
+                    sync_contacts_class: this.contactsClassInput?.value?.trim() || 'Personne',
                     sync_contacts_mapping: contactsMappingValue,
-                    sync_calendar_enabled: this.calendarEnabledCheckbox.checked,
-                    sync_calendar_user: this.calendarUserSelect.value,
-                    sync_calendar_name: this.calendarNameInput.value.trim(),
-                    sync_calendar_class: this.calendarClassInput.value.trim() || 'Action',
+                    sync_calendar_enabled: this.calendarEnabledCheckbox?.checked || false,
+                    sync_calendar_user: this.calendarUserSelect?.value || '',
+                    sync_calendar_name: this.calendarNameInput?.value?.trim() || '',
+                    sync_calendar_class: this.calendarClassInput?.value?.trim() || 'Action',
                     sync_calendar_mapping: calendarMappingValue,
                     sync_calendar_array_properties: calendarArrayPropertiesValue,
                     sync_metadata_filter: metadataFilterValue,
@@ -281,8 +283,10 @@ class SyncSettingsManager {
             console.error('Erreur:', error);
             this.showStatus('Erreur lors de l\'enregistrement', 'error');
         } finally {
-            this.saveBtn.disabled = false;
-            this.saveBtn.textContent = '💾 Enregistrer les paramètres de synchronisation';
+            if (this.saveBtn) {
+                this.saveBtn.disabled = false;
+                this.saveBtn.textContent = '💾 Enregistrer les paramètres de synchronisation';
+            }
         }
     }
 

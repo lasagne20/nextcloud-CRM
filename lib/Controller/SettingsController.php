@@ -46,8 +46,8 @@ class SettingsController extends Controller {
     }
 
     /**
-     * @AdminRequired
-     * @CSRFCheck
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     public function saveSyncSettings(
         bool $sync_contacts_global_enabled = false,
@@ -127,8 +127,8 @@ class SettingsController extends Controller {
     }
 
     /**
-     * @AdminRequired
-     * @CSRFCheck
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     public function saveAnimationConfigs(string $animation_configs = '[]'): DataResponse {
         try {

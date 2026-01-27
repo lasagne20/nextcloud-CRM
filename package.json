@@ -32,7 +32,7 @@
   "author": "Léo Dupont <leo.dupontrenoux@gmail.com>",
   "license": "AGPL-3.0-or-later",
   "devDependencies": {
-    "@babel/core": "^7.28.5",
+    "@babel/core": "^7.28.6",
     "@babel/preset-env": "^7.28.5",
     "@playwright/test": "^1.40.0",
     "@types/jest": "^29.5.0",

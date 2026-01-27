@@ -33,30 +33,24 @@ export class NextcloudApp implements IApp {
 
     // File operations
     async readFile(file: IFile): Promise<string> {
-        console.log('📄 Reading file:', file.path, 'extension:', file.extension);
-        
-        // Si c'est un fichier YAML dans config/
-        if (file.extension === 'yaml' && file.path.includes('/config/')) {
+        // Si c'est un fichier YAML (detecter Config ou config dans le path)
+        if (file.extension === 'yaml' && (file.path.includes('/Config/') || file.path.includes('/config/'))) {
             const configName = file.basename || file.name.replace('.yaml', '');
-            console.log('📋 Reading config file:', configName);
             const response = await fetch(`${this.baseUrl}/config/${encodeURIComponent(configName)}`);
             if (!response.ok) {
                 throw new Error(`Failed to read config: ${file.path}`);
             }
             const data = await response.json();
-            console.log('📋 Config content received:', data.content?.substring(0, 100) + '...');
             return data.content || '';
         }
         
         // Sinon, c'est un fichier .md
         const fileName = file.name || file.path.split('/').pop() || 'unknown.md';
-        console.log('📄 Reading markdown file:', fileName);
         const response = await fetch(`${this.baseUrl}/files/md/${encodeURIComponent(fileName)}`);
         if (!response.ok) {
             throw new Error(`Failed to read file: ${file.path}`);
         }
         const data = await response.json();
-        console.log('📄 File content received:', data.content?.substring(0, 100) + '...');
         return data.content || '';
     }
 
@@ -138,7 +132,6 @@ export class NextcloudApp implements IApp {
             
             if (mdResponse.ok) {
                 const mdData = await mdResponse.json();
-                console.log('� MD Files received:', mdData);
                 const mdFiles = mdData.map((f: any) => ({
                     path: f.path,
                     name: f.name,
@@ -152,32 +145,23 @@ export class NextcloudApp implements IApp {
         }
         
         // Récupérer les fichiers YAML de config
-        console.log('📂 Requesting config files from:', `${this.baseUrl}/config/list`);
         try {
             const configResponse = await fetch(`${this.baseUrl}/config/list`);
-            console.log('📋 Config Response status:', configResponse.status, configResponse.statusText);
             
             if (configResponse.ok) {
                 const configData = await configResponse.json();
-                console.log('📋 Raw config data received:', configData);
-                const yamlFiles = configData.map((f: any) => {
-                    const yamlFile = {
-                        path: `/apps/crm/config/${f.file}`,
-                        name: f.file,
-                        basename: f.name,
-                        extension: 'yaml'
-                    };
-                    console.log('📋 Created YAML file entry:', yamlFile);
-                    return yamlFile;
-                });
-                console.log('📋 All YAML files to add:', yamlFiles);
+                const yamlFiles = configData.map((f: any) => ({
+                    path: f.path,
+                    name: f.file,
+                    basename: f.name,
+                    extension: 'yaml'
+                }));
                 results.push(...yamlFiles);
             }
         } catch (error) {
-            console.warn('⚠️ Failed to list config files:', error);
+            console.error('Failed to list config files:', error);
         }
         
-        console.log('📂 Total files returned:', results.length, results);
         return results;
     }
 
@@ -189,14 +173,12 @@ export class NextcloudApp implements IApp {
 
     async getFile(path: string): Promise<IFile | null> {
         try {
-            console.log('🔍 getFile called with path:', path);
             const fileName = path.split('/').pop() || '';
             const extension = fileName.split('.').pop() || '';
             
-            // Si c'est un fichier YAML dans config/, utiliser l'API config
-            if (path.includes('/config/') && extension === 'yaml') {
+            // Si c'est un fichier YAML (detecter Config ou config dans le path)
+            if (extension === 'yaml' && (path.includes('/Config/') || path.includes('/config/'))) {
                 const configName = fileName.replace('.yaml', '');
-                console.log('📋 Fetching config file:', configName);
                 const response = await fetch(`${this.baseUrl}/config/${encodeURIComponent(configName)}`);
                 if (!response.ok) {
                     console.warn('⚠️ Config file not found:', path);
@@ -256,7 +238,6 @@ export class NextcloudApp implements IApp {
         // Vérifier le cache
         const cached = this.metadataCache.get(cacheKey);
         if (cached && (now - cached.timestamp) < this.CACHE_TTL) {
-            console.log('✅ Using cached metadata for:', file.path);
             return cached.metadata;
         }
         
@@ -570,27 +551,11 @@ export class MarkdownCRMManager {
 
         this.vault = new Vault(this.app, defaultSettings);
         
-        console.log('🏗️ Vault created, waiting for dynamic classes initialization...');
-        
         // Attendre que les classes dynamiques soient chargées
-        // On utilise le DynamicClassFactory pour charger manuellement
         const factory = this.vault.getDynamicClassFactory();
         if (factory) {
-            console.log('📚 Loading classes via factory...');
             try {
-                // D'abord, lister tous les fichiers pour debug
-                const allFiles = await this.app.listFiles();
-                console.log('🔍 All files from listFiles:', allFiles);
-                console.log('🔍 Config path used:', this.vault?.settings.configPath);
-                const configPathToUse = this.vault?.settings.configPath || '/apps/crm/config';
-                console.log('🔍 Files starting with config path:', 
-                    allFiles.filter(f => f.path.startsWith(configPathToUse)));
-                console.log('🔍 YAML files:', 
-                    allFiles.filter(f => f.extension === 'yaml'));
-                
                 const availableClasses = await factory.getAvailableClasses();
-                console.log('📚 Available classes found:', availableClasses);
-                console.log('📚 Number of classes:', availableClasses.length);
                 
                 if (availableClasses.length === 0) {
                     console.error('❌ No classes found! Check if YAML files are properly listed.');

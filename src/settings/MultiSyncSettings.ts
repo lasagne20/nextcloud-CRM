@@ -53,11 +53,15 @@ class MultiSyncSettingsManager {
             const contactConfigsData = crmElement.dataset.contactsConfigs;
             const calendarConfigsData = crmElement.dataset.calendarConfigs;
             
+            console.log('🔍 RAW contactConfigsData:', contactConfigsData);
+            console.log('🔍 RAW calendarConfigsData:', calendarConfigsData);
+            console.log('🔍 ALL dataset:', crmElement.dataset);
+            
             this.contactConfigs = contactConfigsData ? JSON.parse(contactConfigsData) : [];
             this.calendarConfigs = calendarConfigsData ? JSON.parse(calendarConfigsData) : [];
             
-            console.log('Configs contact:', this.contactConfigs);
-            console.log('Configs calendrier:', this.calendarConfigs);
+            console.log('✅ Configs contact parsed:', this.contactConfigs);
+            console.log('✅ Configs calendrier parsed:', this.calendarConfigs);
 
         } catch (e) {
             console.error('Erreur parsing données initiales:', e);

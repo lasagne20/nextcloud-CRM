@@ -10,7 +10,8 @@ export class MDManagementApp {
         const btnEl = document.getElementById(addBtnId) as HTMLButtonElement;
 
         if (!containerEl || !btnEl) {
-            throw new Error("Conteneur ou bouton introuvable !");
+            console.warn("⚠️ MDManagementApp: Conteneur ou bouton introuvable, fonctionnalité désactivée");
+            return;
         }
 
         this.container = containerEl;
@@ -32,14 +33,27 @@ class GeneralSettingsManager {
         this.vaultPathInput = document.getElementById('crm-vault-path') as HTMLInputElement;
         this.statusSpan = document.getElementById('crm-save-status') as HTMLSpanElement;
 
+        console.log('🔧 GeneralSettingsManager initialized');
+        console.log('  - saveBtn:', this.saveBtn);
+        console.log('  - configPathInput:', this.configPathInput);
+        console.log('  - vaultPathInput:', this.vaultPathInput);
+        console.log('  - statusSpan:', this.statusSpan);
+
         if (this.saveBtn) {
             this.saveBtn.addEventListener('click', () => this.saveSettings());
+            console.log('✅ Click listener attached to save button');
+        } else {
+            console.error('❌ Save button not found!');
         }
     }
 
     private async saveSettings() {
+        console.log('💾 saveSettings called');
         const configPath = this.configPathInput.value.trim();
         const vaultPath = this.vaultPathInput.value.trim();
+
+        console.log('  - configPath:', configPath);
+        console.log('  - vaultPath:', vaultPath);
 
         if (!configPath || !vaultPath) {
             this.showStatus('Veuillez remplir tous les champs', 'error');
@@ -50,7 +64,10 @@ class GeneralSettingsManager {
             this.saveBtn.disabled = true;
             this.saveBtn.textContent = '⏳ Enregistrement...';
 
-            const response = await fetch('/apps/crm/settings/general', {
+            const url = (window as any).OC.generateUrl('/apps/crm/settings/general');
+            console.log('📡 Sending request to:', url);
+            
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -62,11 +79,16 @@ class GeneralSettingsManager {
                 })
             });
 
+            console.log('📥 Response status:', response.status);
+
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Response error:', errorText);
                 throw new Error('Erreur lors de l\'enregistrement');
             }
 
             const data = await response.json();
+            console.log('✅ Response data:', data);
             this.showStatus(data.message || 'Paramètres enregistrés !', 'success');
             
             // Informer l'utilisateur qu'un rechargement peut être nécessaire

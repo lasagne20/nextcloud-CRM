@@ -11,24 +11,28 @@ use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\Files\IRootFolder;
 use OCP\IUserSession;
+use OCP\IConfig;
 use Psr\Log\LoggerInterface;
 
 class FileController extends Controller {
     private IRootFolder $rootFolder;
     private string $userId;
     private LoggerInterface $logger;
+    private IConfig $config;
 
     public function __construct(
         string $appName,
         \OCP\IRequest $request,
         IRootFolder $rootFolder,
         IUserSession $userSession,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        IConfig $config
     ) {
         parent::__construct($appName, $request);
         $this->rootFolder = $rootFolder;
         $this->userId = $userSession->getUser()->getUID();
         $this->logger = $logger;
+        $this->config = $config;
     }
 
     #[NoAdminRequired]
@@ -130,14 +134,38 @@ class FileController extends Controller {
     #[NoCSRFRequired]
     public function getConfig(string $name): DataResponse {
         try {
-            $configPath = __DIR__ . '/../../config/' . $name . '.yaml';
+            // Récupérer le chemin de configuration depuis les paramètres
+            $configPathSetting = $this->config->getAppValue('crm', 'config_path', '/apps/crm/config');
+            $this->logger->info('Reading config file: ' . $name . ' from path: ' . $configPathSetting);
             
-            if (!file_exists($configPath)) {
-                return new DataResponse(['error' => 'Configuration introuvable'], 404);
+            $userFolder = $this->rootFolder->getUserFolder($this->userId);
+            
+            // Retirer le slash initial si présent
+            if (strpos($configPathSetting, '/') === 0) {
+                $configPathSetting = ltrim($configPathSetting, '/');
             }
-
-            $content = file_get_contents($configPath);
-            return new DataResponse(['content' => $content]);
+            
+            try {
+                $configFolder = $userFolder->get($configPathSetting);
+            } catch (\Exception $e) {
+                $this->logger->error('Config folder not found: ' . $configPathSetting);
+                return new DataResponse(['error' => 'Dossier de configuration introuvable'], 404);
+            }
+            
+            // Chercher le fichier YAML
+            $fileName = $name . '.yaml';
+            try {
+                $file = $configFolder->get($fileName);
+                if (!($file instanceof \OCP\Files\File)) {
+                    return new DataResponse(['error' => 'Le chemin ne pointe pas vers un fichier'], 400);
+                }
+                
+                $content = $file->getContent();
+                return new DataResponse(['content' => $content]);
+            } catch (\Exception $e) {
+                $this->logger->error('Config file not found: ' . $fileName);
+                return new DataResponse(['error' => 'Configuration introuvable: ' . $fileName], 404);
+            }
         } catch (\Exception $e) {
             $this->logger->error('Error reading config file: ' . $e->getMessage());
             return new DataResponse(['error' => 'Erreur lors de la lecture de la configuration: ' . $e->getMessage()], 500);
@@ -148,28 +176,54 @@ class FileController extends Controller {
     #[NoCSRFRequired]
     public function listConfigs(): DataResponse {
         try {
-            $configPath = __DIR__ . '/../../config/';
+            // Récupérer le chemin de configuration depuis les paramètres
+            $configPathSetting = $this->config->getAppValue('crm', 'config_path', '/apps/crm/config');
+            $this->logger->info('Config path from settings: ' . $configPathSetting);
             
-            if (!is_dir($configPath)) {
-                return new DataResponse(['error' => 'Dossier de configuration introuvable'], 404);
+            $userFolder = $this->rootFolder->getUserFolder($this->userId);
+            
+            // Si le chemin commence par /, c'est un chemin absolu depuis la racine utilisateur
+            // Sinon c'est un chemin relatif
+            if (strpos($configPathSetting, '/') === 0) {
+                $configPathSetting = ltrim($configPathSetting, '/');
+            }
+            
+            try {
+                $configFolder = $userFolder->get($configPathSetting);
+            } catch (\Exception $e) {
+                $this->logger->error('Config folder not found: ' . $configPathSetting);
+                return new DataResponse(['error' => 'Dossier de configuration introuvable: ' . $configPathSetting], 404);
+            }
+            
+            if (!($configFolder instanceof \OCP\Files\Folder)) {
+                return new DataResponse(['error' => 'Le chemin ne pointe pas vers un dossier'], 400);
             }
 
             $configs = [];
-            $files = scandir($configPath);
+            $files = $configFolder->getDirectoryListing();
             
             foreach ($files as $file) {
-                if (pathinfo($file, PATHINFO_EXTENSION) === 'yaml') {
+                // Check if it's a file (not a folder) and has .yaml extension
+                if ($file instanceof \OCP\Files\File && $file->getExtension() === 'yaml') {
+                    $fullPath = $file->getPath();
+                    // Remove the /username/files/ prefix to get the relative path
+                    $relativePath = preg_replace('#^/' . preg_quote($this->userId, '#') . '/files/#', '', $fullPath);
+                    
                     $configs[] = [
-                        'name' => pathinfo($file, PATHINFO_FILENAME),
-                        'file' => $file
+                        'name' => pathinfo($file->getName(), PATHINFO_FILENAME),
+                        'file' => $file->getName(),
+                        'path' => $relativePath,  // Use relative path without /username/files/ prefix
+                        'size' => $file->getSize(),
+                        'mtime' => $file->getMTime()
                     ];
                 }
             }
 
+            $this->logger->info('Found ' . count($configs) . ' YAML config files');
             return new DataResponse($configs);
         } catch (\Exception $e) {
             $this->logger->error('Error listing config files: ' . $e->getMessage());
-            return new DataResponse(['error' => 'Erreur lors du listage des configurations'], 500);
+            return new DataResponse(['error' => 'Erreur lors du listage des configurations: ' . $e->getMessage()], 500);
         }
     }
 }

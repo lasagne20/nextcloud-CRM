@@ -1035,9 +1035,30 @@ private function addContact(string $name, array $metadata): void {
                         }
                     }
                     
-                    // Générer l'ID unique
-                    $eventId = str_replace('{index}', (string)$index, $idFormat);
+                    // Générer l'ID unique avec support des placeholders
+                    $eventId = $idFormat;
+                    
+                    // Remplacer les placeholders standards
+                    $eventId = str_replace('{index}', (string)$index, $eventId);
                     $eventId = str_replace('{filename}', preg_replace('/\.md$/', '', $name), $eventId);
+                    
+                    // Remplacer les placeholders de l'élément
+                    foreach ($item as $key => $value) {
+                        if (is_string($value)) {
+                            $eventId = str_replace('{' . $key . '}', $value, $eventId);
+                        }
+                    }
+                    
+                    // Remplacer les placeholders _root depuis les métadonnées racine
+                    if (preg_match_all('/\{_root\.([^}]+)\}/', $eventId, $matches)) {
+                        foreach ($matches[1] as $rootField) {
+                            $value = $this->resolveFieldValue('_root.' . $rootField, $item, $metadata);
+                            $eventId = str_replace('{_root.' . $rootField . '}', $value, $eventId);
+                        }
+                    }
+                    
+                    // Nettoyer l'ID (enlever les caractères spéciaux pour éviter les problèmes)
+                    $eventId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $eventId);
                     
                     // Construire la description avec les champs configurés
                     $description = '';
@@ -1321,9 +1342,30 @@ private function addContact(string $name, array $metadata): void {
                         }
                     }
                     
-                    // Générer l'ID unique
-                    $eventId = str_replace('{index}', (string)$index, $idFormat);
+                    // Générer l'ID unique avec support des placeholders
+                    $eventId = $idFormat;
+                    
+                    // Remplacer les placeholders standards
+                    $eventId = str_replace('{index}', (string)$index, $eventId);
                     $eventId = str_replace('{filename}', preg_replace('/\.md$/', '', $name), $eventId);
+                    
+                    // Remplacer les placeholders de l'élément
+                    foreach ($item as $key => $value) {
+                        if (is_string($value)) {
+                            $eventId = str_replace('{' . $key . '}', $value, $eventId);
+                        }
+                    }
+                    
+                    // Remplacer les placeholders _root depuis les métadonnées racine
+                    if (preg_match_all('/\{_root\.([^}]+)\}/', $eventId, $matches)) {
+                        foreach ($matches[1] as $rootField) {
+                            $value = $this->resolveFieldValue('_root.' . $rootField, $item, $metadata);
+                            $eventId = str_replace('{_root.' . $rootField . '}', $value, $eventId);
+                        }
+                    }
+                    
+                    // Nettoyer l'ID (enlever les caractères spéciaux pour éviter les problèmes)
+                    $eventId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $eventId);
                     
                     // Construire la description avec les champs configurés
                     $description = '';
